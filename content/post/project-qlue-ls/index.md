@@ -5,18 +5,26 @@ author: "Ioannis Nezis"
 authorAvatar: "img/profile.png"
 tags: ["SPARQL", "lsp", "wasm", "rust"]
 categories: []
-image: "img/writing.jpg"
+image: "img/cover.png"
 ---
 
 Modern developer environments are way more capable than simple Text editors.
-They provide domain-specific tools to improve the user experience (building, running, debugging, linting, formatting etc.).
-In this article we will take a deep dive into how I wrote such a domain specific support tool for *SPARQL*,
+They provide domain-specific tools to improve the user experience.
+They give hints, suggest changes or completions and more.  
+In this article we will take a look behind the curtains and build language support for *SPARQL*,
 a query language for knowledge graphs.
 
 <!-- more -->
 
 You can find the source code in my [GitHub repository](https://github.com/IoannisNezis/sparql-language-server).  
 And a life demo on [qlue-ls.com](https://qlue-ls.com/).
+
+
+# TL;DR
+
+I build a [sparql-language-server](https://github.com/IoannisNezis/Qlue-ls) from scratch in [Rust](https://www.rust-lang.org/), powered by [tree-sitter](https://tree-sitter.github.io/tree-sitter/).
+To showcase the Language server I build a [web editor](https://sparql.nezis.de/) using [Monaco](https://microsoft.github.io/monaco-editor/).
+To run the language server within the browser, I used [WebAssembly](https://webassembly.org/)
 
 # Content
 
@@ -29,7 +37,7 @@ And a life demo on [qlue-ls.com](https://qlue-ls.com/).
     2. [Document synchronization](#document-synchronization)
     3. [Capabilities](#capabilities)
 3. [Implementation](#implementation)
-    1. [JSON-RPC](#json-rpc)
+    1. [speaking JSON-RPC](#speaking-json-rpc)
     2. [Parser: the Engine under the hood](#parser:-the-engine-under-the-hood)
         1. [Tree-sitter](#tree-sitter)
     1. [Implemented Capabilities](#implemented-capabilities)
@@ -61,11 +69,6 @@ And a life demo on [qlue-ls.com](https://qlue-ls.com/).
     1. [Enhance existing features](#enhance-existing-features)
 6. [Acknowledgements](#acknowledgements)
 
-# TL;DR
-
-I build a [sparql-language-server](https://github.com/IoannisNezis/sparql-language-server) from scratch in [Rust](https://www.rust-lang.org/), powered by [tree-sitter](https://tree-sitter.github.io/tree-sitter/).
-To showcase the Language server I build a [web editor](https://sparql.nezis.de/) using [Monaco](https://microsoft.github.io/monaco-editor/).
-To run the language server within the browser, I compiled the thing to [WebAssembly](https://webassembly.org/)
 # Motivation
 
 >[!todo]
@@ -228,7 +231,7 @@ Here is the module structure of my crate[^5]:
 
 ![](img/examples/code structure.canvas|code structu)
 
-## JSON-RPC
+## speaking JSON-RPC
 
 Assume we set up the Editor (client) to connect to our language server.
 It will send an utf8-byte stream over the configured channel (stdio), and we need to interpret and respond to this byte steam.
