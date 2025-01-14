@@ -14,7 +14,7 @@ They give hints, suggest changes or completions and more.
 In this article we will take a look behind the curtains and build language support for *SPARQL*,
 a query language for knowledge graphs.
 
-<!-- more -->
+<!--more-->
 
 You can find the source code in my [GitHub repository](https://github.com/IoannisNezis/sparql-language-server).  
 And a life demo on [qlue-ls.com](https://qlue-ls.com/).
@@ -27,8 +27,6 @@ To showcase the Language server I build a [web editor](https://sparql.nezis.de/)
 To run the language server within the browser, I used [WebAssembly](https://webassembly.org/)
 
 # Content
-
-
 
 - [Motivation](#motivation)
 - [Goal](#goal)
@@ -106,12 +104,12 @@ A key advantage of this architecture is that this features for language support 
 # Goal
 
 My goal is to create a Language Server for [SPARQL](https://www.w3.org/TR/sparql11-query/#rQueryUnit).
-The language server should be able to **format** queries, give **diagnostic** reports and **suggest completions**.
+The language server should be able to **format** queries, give **diagnostic** reports and suggest **completions**.
 To work in the [Qlever-UI](https://qlever.cs.uni-freiburg.de/) the Language Server should be accessible from an editor that runs in the browser.
 # The Language Server Protocol
 
 Let's talk briefly about the Protocol.
-It's build on top of [JSON-RPC](https://www.jsonrpc.org/specification), a `json` based protocol that enables, as the name suggests, inter-process communication.
+It's build on top of [JSON-RPC](https://www.jsonrpc.org/specification), a [*JSON*](https://de.wikipedia.org/wiki/JSON) based protocol that enables, as the name suggests, inter-process communication.
 So the development tool (in our case the editor) and the language server run in two separate processes and communicate asynchronously via **JSON-RPC**.
 
 ## JSON-RPC
@@ -133,12 +131,13 @@ There are also notifications[^4] and error responses, but we will omit them for 
 
 ## Document synchronization
 
-For the Language server to do anything it needs to know what the user is doing.
+For the Language server to do anything, it needs to know what the user is doing.
 
-The Specification defines 3 [Document Synchronization](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_synchronization) methods for this:
+The LSP-Specification defines 3 [Document Synchronization](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_synchronization) methods for this purpose:
  - [`textDocument/didOpen`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didOpen)
  - [`textDocument/didChange`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didChange)
  - [`textDocument/didClose`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didClose)
+
 which are mandatory to implement (for clients).
 
 The names are pretty self-explanatory. When ever a document is opened, changed or closed the client sends this information to the server. The [textDocument/didChange](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didChange) notification[^4] supports full and incremental synchronization. The server and client negotiate this during [initialization](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize).
@@ -149,12 +148,13 @@ Editors give the position in the textdocument (row, column) based on a utf-16 st
 While the the chars them self are encoded in utf-8.
 Ofcourse utf-8 is a variable length encoding, so different characters can have different byte-sizes.
 
-This was a bit confusing to get right.
-
 ![](img/encodings.png)
 
+This was a bit confusing to get right.
 
-Through these messages the language server has a "mirrored", synchronization version of the editor state.
+
+
+Through these messages the language server has a "mirrored" version of the editor state.
 
 >[!example]
 > Here is a example for a incremental **textDocument/didChange** notification.
@@ -189,7 +189,7 @@ Through these messages the language server has a "mirrored", synchronization ver
 
 ## Capabilities
 
-When Initialization and synchronization work, the real fun begins.
+When initialization and synchronization work, the real fun begins.  
 Now we can implement complex language features and provide actual smarts to the editor.
 As long as both the client and server support the capability.
 
@@ -213,19 +213,14 @@ Here is an **incomplete** list of Language Feature capabilities that made it int
 | [Range Formatting](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_rangeFormatting)       | Format the provided range in a document                       | Not Planned             |
 | [Rename](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_rangeFormatting)                 | Rename a symbol                                               | Planned                 |
 
-At the moment (05.12.2024) only the formatting feature is really completed.
-The rest is in an experimental state and needs a stronger engine to work properly.
-
 # Implementation
 
 Let's talk about what I actually did.
+
 I choose to use [Rust](https://www.rust-lang.org/) for this project since its fancy in I like shiny things.
 Rust is the most admired programming language in the [Stack overflow developer survey 2024](https://survey.stackoverflow.co/2024/technology#2-programming-scripting-and-markup-languages), and I was curious why. After this project I can confirm that Rust is a very cool language, but the leading curve is quiet steep.
 Especially the error handling, increddibly smart compiler, functional approach and rich ecosystem enable a smooth developing experience. Besides a steep learning curve i also feel like its harder to get stuff done quickly, compared to python, due to the very strict compiler. But the resulting code is a lot more robust.
 
-Okay first things first, we need to speak **JSON-RPC**.
-Then we need to implement some tool to analyse SPARQL queries.
-When we got the analysis tool running we can use it to provide some language features.
 
 Here is the module structure of my crate[^5]:
 
@@ -233,8 +228,12 @@ Here is the module structure of my crate[^5]:
 
 ## speaking JSON-RPC
 
+Okay first things first, we need to speak **JSON-RPC**.
+Then we need to implement some tool to analyse SPARQL queries.
+When we got the analysis tool running we can use it to provide some language features.
+
 Assume we set up the Editor (client) to connect to our language server.
-It will send an utf8-byte stream over the configured channel (stdio), and we need to interpret and respond to this byte steam.
+It will send an utf-8 byte-stream. We need to interpret the bytes and respond.
 
 The first message will look something like this:
 
