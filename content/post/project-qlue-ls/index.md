@@ -30,44 +30,44 @@ To run the language server within the browser, I used [WebAssembly](https://weba
 
 
 
-1. [Motivation](#motivation)
-2. [Goal](#goal)
-2. [The Language Server Protocol ](#the-language-server-protocol)
-    1. [JSON-RPC](#json-rpc)
-    2. [Document synchronization](#document-synchronization)
-    3. [Capabilities](#capabilities)
-3. [Implementation](#implementation)
-    1. [speaking JSON-RPC](#speaking-json-rpc)
-    2. [Parser: the Engine under the hood](#parser:-the-engine-under-the-hood)
-        1. [Tree-sitter](#tree-sitter)
-    1. [Implemented Capabilities](#implemented-capabilities)
-        1. [Formatting](#formatting)
-        1. [Hover](#hover)
-        1. [Diagnostics](#diagnostics)
-        1. [Code Actions](#code-actions)
-        1. [Completion Suggestions](#completion-suggestions)
-            1. [ Static](#1-static)
-            1. [ Dynamic](#2-dynamic)
-            1. [ Offline](#21-offline)
-            1. [ Online](#21-online)
-4. [Using the Language server](#using-the-language-server)
-    1. [Neovim](#neovim)
-        1. [Installing the Programm](#installing-the-programm)
-        1. [Attaching](#attaching)
-    1. [VS-code](#vs-code)
-    1. [The Browser](#the-browser)
-        1. [WebAssembly](#webassembly)
-            1. [Tree-Sitter in WebAssembly](#tree-sitter-in-webassembly)
-        1. [The Editor](#the-editor)
-        1. [TextMate](#textmate)
-        1. [Plugging everything together](#plugging-everything-together)
-5. [How does Qlue-ls compare against other software?](#how-does-qlue-ls-compare-against-other-software)
-    1. [Qlue-ls vs sparql-formatter](#qlue-ls-vs-sparql-formatter)
-5. [Future work](#future-work)
-    1. [Stronger Parser](#stronger-parser)
-    1. [Query Sparql endpoint](#query-sparql-endpoint)
-    1. [Enhance existing features](#enhance-existing-features)
-6. [Acknowledgements](#acknowledgements)
+- [Motivation](#motivation)
+- [Goal](#goal)
+- [The Language Server Protocol ](#the-language-server-protocol)
+    - [JSON-RPC](#json-rpc)
+    - [Document synchronization](#document-synchronization)
+    - [Capabilities](#capabilities)
+- [Implementation](#implementation)
+    - [speakingJSON-RPC](#speaking-json-rpc)
+    - [Parser: the Engine under the hood](#parser:-the-engine-under-the-hood)
+        - [Tree-sitter](#tree-sitter)
+    - [Implemented Capabilities](#implemented-capabilities)
+        - [Formatting](#formatting)
+        - [Hover](#hover)
+        - [Diagnostics](#diagnostics)
+        - [Code Actions](#code-actions)
+        - [Completion Suggestions](#completion-suggestions)
+            - [ Static](#1-static)
+            - [ Dynamic](#2-dynamic)
+            - [ Offline](#21-offline)
+            - [ Online](#21-online)
+- [Using the Language server](#using-the-language-server)
+    - [Neovim](#neovim)
+        - [Installing the Programm](#installing-the-programm)
+        - [Attaching](#attaching)
+    - [VS-code](#vs-code)
+    - [The Browser](#the-browser)
+        - [WebAssembly](#webassembly)
+            - [Tree-Sitter in WebAssembly](#tree-sitter-in-webassembly)
+        - [The Editor](#the-editor)
+        - [TextMate](#textmate)
+        - [Plugging everything together](#plugging-everything-together)
+- [How does Qlue-ls compare against other software?](#how-does-qlue-ls-compare-against-other-software)
+    - [Qlue-ls vs sparql-formatter](#qlue-ls-vs-sparql-formatter)
+- [Future work](#future-work)
+    - [Stronger Parser](#stronger-parser)
+    - [Query Sparql endpoint](#query-sparql-endpoint)
+    - [Enhance existing features](#enhance-existing-features)
+- [Acknowledgements](#acknowledgements)
 
 # Motivation
 
@@ -533,7 +533,7 @@ Let's talk about the features, besides the lifecycle and synchronization, that I
 
 ### Formatting
 
-When the client sends a `textDocument/formatting`, the server returns a list of `TextEdit`'s.
+When the client sends a `textDocument/formatting` request, the server returns a list of [`TextEdit`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textEdit)'s.
 A `TextEdit` is a incremental change, composed of a Range and a String.
 The Client then applies the changes and thus formats the document.
 
@@ -546,21 +546,86 @@ Each step the "Type" of the node is matched and handled with a strategy.
 For example "sparate each child by a new line" or "capitalize the text".
 That is done recursivly.
 
-Here are a few examples:
+Here are a few examples of formatted queries.  
+If you want get a more detailed picture, check out the [formatting tests](https://github.com/IoannisNezis/Qlue-ls/blob/main/src/server/message_handler/formatting/tests.rs).
 
-| unformatted           | formatted           |
-| --------------------- | ------------------- |
-| ![](img/examples/unformatted1.png) | ![](img/examples/formatted1.png) |
-| ![](img/examples/unformatted2.png) | ![](img/examples/formatted2.png) |
+- 
+    ```sparql
+    BASE <http://...>
+    PREFIX namespace1: <iri>
+    PREFIX namespace12: <iri>
+    SELECT ?s ?p (MAX (?o)  AS ?max_a )
+    FROM <...>
+    FROM <...>
+    WHERE {
+        {
+            ?s namespace1:p1 ?o ;
+              namespace12:p2 "dings" .
+            ?other <abc> 32 .
+            FILTER ((?other * 4) > 6 || ?o = "bar")
+        }
+        UNION {
+            {
+                SELECT * WHERE {
+                    ?a ?b ?c .
+                    BIND (?c + 3 AS ?var)
+                }
+                GROUP BY ?a
+                HAVING ?b > 9
+                ORDER BY DESC(?a)
+                LIMIT 100
+                OFFSET 10
+            }
+        }
+    }
+    ```
+-
+    ```sparql
+    SELECT * WHERE {
+        wd:Q11571 p:P166 [ pq:P585 ?date ] .
+        wd:Q11572 p:P166 [
+            pq:P585 ?date ;
+            <...> ?other
+        ]
+        wd:Q11572 p:P166 []
+    }
+    ```
+- 
+    ```sparql
+    SELECT * WHERE {
+        ?a ?b ",,," .
+        FILTER (1 IN (1, 2, 3))
+    }
+    ```
+-
+    ```sparql
+    SELECT * WHERE {
+        ?a <iri>/^a/(!<>?)+ | (<iri> | ^a | a) ?b .
+    }
+    ```
 
-I added some details to align prefix declarations and predicates
+I added some optional formatting, like aligning prefix declarations and predicates.
+Here is a example for a query with every non default option:
 
-| unaligned          | aligned          |
-| ------------------ | ---------------- |
-| ![](img/examples/unaligned.png) | ![](img/examples/aligned.png) |
+-
+    ```sparql
+    prefix n1:     <...>
+    prefix n12:    <...>
+    prefix n123:   <...>
+    prefix n1234:  <...>
+    prefix n12345: <...>
 
-Since this is something the user may have opinions about i made this configurable.
-Here is the default format configuration:
+    select * 
+    where {
+      ?var n1:p "ding" ;
+           n12:p "foo" ;
+           n123:p "bar" ;
+           n1234:p "baz" ;
+           n12345:p "out of filler" ;
+    }
+    ```
+
+Here is the full default format configuration:
 
 ```toml
 [format]
@@ -572,9 +637,46 @@ insert_spaces = true
 tab_size = 2
 where_new_line = false
 ```
+
+#### Ideas for the future
+
+There are three things that the formatter does not handle well:
+
+- **Comments**: should be possible to place at the end of a line:
+    ```sparql
+    SELECT * WHERE {
+        ?s ?p ?o # EOL comment
+    }
+    ```
+
+- **Long lines**: should cause a linebreak
+    ```sparql
+    SELECT ?v1 ?v3 ?v4 ?v5 ?v6 ?v7 ?v8 ?v9 ?v10
+           ?v11 ?v12 ?v13 ?v14 ?v15 ?v16 ?v17
+           ?v18 ?v19 ?v20 ?v21 ?v22 ?v23 ?v24
+           ?v25 ?v26 ?v27 ?v28 ?v29 ?v30 ?v31
+    WHERE {}
+    ```
+- **small nested queries**: should be compressed
+    ```sparql
+    SELECT ?castle WHERE {
+        osmrel:51701 ogc:contains ?castle .
+        { { ?castle osmkey:historic "castle" }
+          UNION
+          { ?castle osmkey:historic "tower" . ?castle osmkey:castle_type "defensive" } }
+        UNION
+        { ?castle osmkey:historic "archaeological_site" . ?castle osmkey:site_type "fortification" }
+        ?castle osmkey:name ?name .
+        ?castle osmkey:ruins ?ruins .
+        OPTIONAL { ?castle osmkey:historic ?class }
+        OPTIONAL { ?castle osmkey:archaeological_site ?class }
+    }
+    ```
+
+
 ### Hover
 
-The client sends a `textDocument/hover` to request information about a specific position in a text-document.
+When the client sends a `textDocument/hover` to request, the server responds with information about a given position in a text-document.
 
 This is usefull to give unexperienced users documentation about how some constructs work:
 
@@ -873,8 +975,8 @@ but i again spare you with the details.
 
 A good editor needs Syntax highlighting. (The thing that makes the colors)
 
-| without syntag highlighting | with syntax highlighting |
-| --------------------------- | ------------------------ |
+| without syntag highlighting              | with syntax highlighting              |
+| ---------------------------------------- | ------------------------------------- |
 | ![](img/examples/highlighting_off.png)   | ![](img/examples/highlighting_on.png) |
 
 For Monaco-Editor there are 2 options:
