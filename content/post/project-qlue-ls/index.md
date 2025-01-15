@@ -891,7 +891,7 @@ It defines a Bytecode to run programms withing the browser.
 All big browers support it.
 
 If your Programm can be convertet (compiled) to this WebAssembly(WASM) bytecode it can executed in the Browser.
-![](img/examples/WebAssembly-data-flow-architecture.png)[^9]
+![](img/WebAssembly-data-flow-architecture.png)[^9]
 So now we need to build a compiler to convert Rust to WASM bytecode...
 Unfortunatly [some strangers on the Internet](https://github.com/rustwasm/team) already did that.
 The Project is called [wasm-pack](https://rustwasm.github.io/wasm-pack/).
