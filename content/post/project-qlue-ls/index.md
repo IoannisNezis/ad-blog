@@ -44,10 +44,6 @@ To run the language server within the browser, I used [WebAssembly](https://weba
         - [Diagnostics](#diagnostics)
         - [Code Actions](#code-actions)
         - [Completion Suggestions](#completion-suggestions)
-            - [ Static](#1-static)
-            - [ Dynamic](#2-dynamic)
-            - [ Offline](#21-offline)
-            - [ Online](#21-online)
 - [Using the Language server](#using-the-language-server)
     - [Neovim](#neovim)
         - [Installing the Programm](#installing-the-programm)
@@ -69,9 +65,10 @@ To run the language server within the browser, I used [WebAssembly](https://weba
 
 # Motivation
 
->[!todo]
-> idea: editor keeps state of you document, language server the state of  your code,
-> lsp enables the exange between those two informations
+{{< notice todo >}}
+ idea: editor keeps state of you document, language server the state of  your code,
+ lsp enables the exange between those two informations
+{{< /notice >}}
 
 The problem of providing language support to developers is very old.
 In the past domain-specific development environments where very common.
@@ -123,9 +120,10 @@ A normal JSON-RPC response has an `id` and `result` field.
 The `id` has to be the same as the `id` of the corresponding request. This enables async communication.
 The `params` contain the result of the operation, if there is one.
 
->[!example]
-> Request: `{"jsonrpc": "2.0", "method": "add", "params": [21, 21], "id": 1}`
-> Response: `{"jsonrpc": "2.0", "result": 42, "id": 1}`
+{{< notice example >}}
+ Request: `{"jsonrpc": "2.0", "method": "add", "params": [21, 21], "id": 1}`
+ Response: `{"jsonrpc": "2.0", "result": 42, "id": 1}`
+{{< /notice >}}
 
 There are also notifications[^4] and error responses, but we will omit them for now.
 
@@ -156,36 +154,37 @@ This was a bit confusing to get right.
 
 Through these messages the language server has a "mirrored" version of the editor state.
 
->[!example]
-> Here is a example for a incremental **textDocument/didChange** notification.
-> ```json
-> {
->	"params": {
->		"contentChanges": [
->			{
->				"rangeLength": 6, //deprecated
->				"text": "42",
->				"range": {
->					"end": {
->						"line": 3,
->						"character": 22
->					},
->					"start": {
->						"line": 3,
->						"character": 16
->					}
->				}
->			}
->		],
->		"textDocument": {
->			"uri": "file:\/\/\/home\/ianni\/code\/sparql-language-server\/example.sparql",
->			"version": 227
->		}
->	},
->	"jsonrpc": "2.0",
->	"method": "textDocument\/didChange"
->}
->```
+{{< notice example >}}
+ Here is a example for a incremental **textDocument/didChange** notification.
+ ```json
+ {
+	"params": {
+		"contentChanges": [
+			{
+				"rangeLength": 6, //deprecated
+				"text": "42",
+				"range": {
+					"end": {
+						"line": 3,
+						"character": 22
+					},
+					"start": {
+						"line": 3,
+						"character": 16
+					}
+				}
+			}
+		],
+		"textDocument": {
+			"uri": "file:\/\/\/home\/ianni\/code\/sparql-language-server\/example.sparql",
+			"version": 227
+		}
+	},
+	"jsonrpc": "2.0",
+	"method": "textDocument\/didChange"
+}
+```
+{{< /notice >}}
 
 ## Capabilities
 
@@ -417,87 +416,89 @@ The generated parser is written in C.
 For some C-reasons I won't get into right now, tree-sitter can generate rust-bindings that allow us to call the c-functions from our rust-program (something I will regret later).
 It provides some functions to parse and navigate the resulting concrete-syntax-tree.
 
->[!example]
->Here is a example from the format function:
->```rust
->   let mut parser = Parser::new();
->   match parser.set_language(&tree_sitter_sparql::LANGUAGE.into()) {
->    Ok(()) => {
->        let tree = parser
->            .parse(text.as_bytes(), None)
->            .expect("could not parse");
->        let formatted_text =
->            format_helper(&text, &mut tree.walk(), 0, "  ", "", &format_settings);
->        return formatted_text;
->    }
->    Err(_) => panic!("Could not setup parser"),
->}
->```
+{{< notice example >}}
+Here is a example from the format function:
+```rust
+   let mut parser = Parser::new();
+   match parser.set_language(&tree_sitter_sparql::LANGUAGE.into()) {
+    Ok(()) => {
+        let tree = parser
+            .parse(text.as_bytes(), None)
+            .expect("could not parse");
+        let formatted_text =
+            format_helper(&text, &mut tree.walk(), 0, "  ", "", &format_settings);
+        return formatted_text;
+    }
+    Err(_) => panic!("Could not setup parser"),
+}
+```
+{{< /notice >}}
 
 A cool feature of tree-sitter is [queries](https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries).
 A query is build out of one or more patterns. Each pattern is a [S-expression](https://en.wikipedia.org/wiki/S-expression).
 Tree-sitter can match these patterns against the syntax tree and return all matches.
 
->[!example]-
->Let's say we want to find all *triples* in a group-graph-pattern that have a predicate that match "pre:p1":
->The query could look like:
->```sparql
->SELECT * WHERE {
->    ?s pre:p2 "object1" .
->    ?s2 pre:p1 "object2"
->}
->```
->My Tree-sitter parser would generate this parse-tree:
->```lsip
->(unit
->  (SelectQuery
->    (SelectClause)
->    (WhereClause
->      (GroupGraphPattern
->        (GroupGraphPatternSub
->          (TriplesBlock
->            (TriplesSameSubjectPath
->              subject: (VAR)
->              (PropertyListPathNotEmpty
->                predicate: (Path
->                  (PathSequence
->                    (PathEltOrInverse
->                      (PathElt
->                        (PathPrimary
->                          (PrefixedName
->                            (PNAME_NS
->                              (PN_PREFIX))
->                            (PN_LOCAL)))))))
->                (ObjectList
->                  object: (RdfLiteral
->                    value: (String
->                      (STRING_LITERAL))))))
->            (TriplesSameSubjectPath
->              subject: (VAR)
->              (PropertyListPathNotEmpty
->                predicate: (Path
->                  (PathSequence
->                    (PathEltOrInverse
->                      (PathElt
->                        (PathPrimary
->                          (PrefixedName
->                            (PNAME_NS
->                              (PN_PREFIX))
->                            (PN_LOCAL)))))))
->                (ObjectList
->                  object: (RdfLiteral
->                    value: (String
->                      (STRING_LITERAL))))))))))))
->```
->
->And here is the query:
->```lisp
->(TriplesSameSubjectPath
->  (VAR)
->  (PropertyListPathNotEmpty
->    (Path) @path (#eq? @path "pre:p1"))) @triple
->```
->`@path` and `@triple` are captures and store the nodes that match the pattern.
+{{< notice example >}}
+Let's say we want to find all *triples* in a group-graph-pattern that have a predicate that match "pre:p1":
+The query could look like:
+```sparql
+SELECT * WHERE {
+    ?s pre:p2 "object1" .
+    ?s2 pre:p1 "object2"
+}
+```
+My Tree-sitter parser would generate this parse-tree:
+```lsip
+(unit
+  (SelectQuery
+    (SelectClause)
+    (WhereClause
+      (GroupGraphPattern
+        (GroupGraphPatternSub
+          (TriplesBlock
+            (TriplesSameSubjectPath
+              subject: (VAR)
+              (PropertyListPathNotEmpty
+                predicate: (Path
+                  (PathSequence
+                    (PathEltOrInverse
+                      (PathElt
+                        (PathPrimary
+                          (PrefixedName
+                            (PNAME_NS
+                              (PN_PREFIX))
+                            (PN_LOCAL)))))))
+                (ObjectList
+                  object: (RdfLiteral
+                    value: (String
+                      (STRING_LITERAL))))))
+            (TriplesSameSubjectPath
+              subject: (VAR)
+              (PropertyListPathNotEmpty
+                predicate: (Path
+                  (PathSequence
+                    (PathEltOrInverse
+                      (PathElt
+                        (PathPrimary
+                          (PrefixedName
+                            (PNAME_NS
+                              (PN_PREFIX))
+                            (PN_LOCAL)))))))
+                (ObjectList
+                  object: (RdfLiteral
+                    value: (String
+                      (STRING_LITERAL))))))))))))
+```
+
+And here is the query:
+```lisp
+(TriplesSameSubjectPath
+  (VAR)
+  (PropertyListPathNotEmpty
+    (Path) @path (#eq? @path "pre:p1"))) @triple
+```
+`@path` and `@triple` are captures and store the nodes that match the pattern.
+{{< /notice >}}
 
 #### How resilient is tree-sitter?
 
@@ -523,12 +524,13 @@ Let's look at a few examples.
 Okay, now that you may have an idea of the fundamental mechanisms.
 Let's talk about the features, besides the lifecycle and synchronization, that I implemented.
 
->[!warning]
->The implemented features are just a **proof of concept**!
->There are many many features that could  and should be added.
->But that takes a lot of time to get right.
->And frankly also requires a stronger parser.
->This should just give you a idea of whats possible.
+{{< notice warning >}}
+The implemented features are just a **proof of concept**!
+There are many many features that could  and should be added.
+But that takes a lot of time to get right.
+And frankly also requires a stronger parser.
+This should just give you a idea of whats possible.
+{{< /notice >}}
 
 ### Formatting
 
@@ -737,9 +739,10 @@ Giving hints to make queries more concise:
 
 The `textDocument/codeAction` request is send from the client to the server to request a set of commands for a given range in a textdocument. These commands can have arbitrary effect, but in most cases change the textdocument through text-edits.
 
->[!note]
->The change of the textdocument is always done by the client (editor).
->The server provides the text-edits but its up to the client to apply them since it "owns" the textdocument.
+{{< notice note >}}
+The change of the textdocument is always done by the client (editor).
+The server provides the text-edits but its up to the client to apply them since it "owns" the textdocument.
+{{< /notice >}}
 
 Often code-actions corispond to a diagnostic they resolve. Such code-actions are called "quickfix".
 The exemplary code action i implemented is "Shorten URI".
@@ -792,8 +795,9 @@ Currently this is done very stupid, as this also suggests variables when they ar
 #### 2.1. Online
 
 Here the Language Server uses data from a SPARQL-endpoint to provide completion suggestions.
->[!warning]
->This is not implemented yet!
+{{< notice warning >}}
+This is not implemented yet!
+{{< /notice >}}
 
 Here is a example from the Qlever-OSM-endpoint: <htps://qlever.cs.uni-freiburg.de/api/osm-planet/>.
 [**O**pen**S**treet**M**ap](https://www.openstreetmap.org/) (OSM) is a Project that collects Geodata that is publicly accesible. Basically Google maps, just without Google.
@@ -1068,10 +1072,11 @@ Let's look at how these tools compare in the aspects discussed in this article. 
 | ⭐      | bearly working  |
 | ❌      | not implemented |
 
->[!warning]
->These observations came from a brief inspection. It's possible they are better than i think they are!
->For example YASGUI also supports custom queries for completion. I did not have the time to test this propertly!
->I know that Qlever-UI also uses custom queries so the destiction between the two may be unfair.
+{{< notice warning >}}
+These observations came from a brief inspection. It's possible they are better than i think they are!
+For example YASGUI also supports custom queries for completion. I did not have the time to test this propertly!
+I know that Qlever-UI also uses custom queries so the destiction between the two may be unfair.
+{{< /notice >}}
 
 ## Qlue-ls vs sparql-formatter
 
