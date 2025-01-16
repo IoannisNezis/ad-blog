@@ -82,11 +82,13 @@ In the past domain-specific development environments where very common.
 | R         | RStudio                 |
 | LaTeX     | TeXworks or Overleave   |
 
-These Programs contain source-code editors, but also provide a suit of integrated tool's that support the development process of their respective domains. That's why they are also referred to IDE's (**I**ntegrated **D**evelopment **E**nvironment).
+These Programs contain source-code editors, but also provide a suit of integrated tool's that support the development process of their respective domains.
+That's why they are also referred to IDE's (**I**ntegrated **D**evelopment **E**nvironment).
 While these development environments still dominate, modern development environments seem to go a different direction.
 
 Some of the new kids on the block are: [neovim](https://neovim.io/), [vscode](https://code.visualstudio.com/) or [sublime text](https://www.sublimetext.com/).
-They all are **general purpose** code editors that have a open-source plugin ecosystem and allow for a personalized customization. A core maintainer of Neovim, [TJ DeVries](https://github.com/tjdevries), calls them PDE's (**P**ersonalized **D**evelopment **E**nvironment), although i don't think it caught on yet.
+They all are **general purpose** code editors that have a open-source plugin ecosystem and allow for a personalized customization. A core maintainer of Neovim,
+[TJ DeVries](https://github.com/tjdevries), calls them PDE's (**P**ersonalized **D**evelopment **E**nvironment), although i don't think it caught on yet.
 
 Long story short: Language support in these PDE's is not build in, but provided via a extension.
 This is made possible by a Protocol published by Microsoft in 2016: The **L**anguage **S**erver **P**rotocol (LSP).
@@ -138,7 +140,9 @@ The LSP-Specification defines 3 [Document Synchronization](https://microsoft.git
 
 which are mandatory to implement (for clients).
 
-The names are pretty self-explanatory. When ever a document is opened, changed or closed the client sends this information to the server. The [textDocument/didChange](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didChange) notification[^4] supports full and incremental synchronization. The server and client negotiate this during [initialization](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize).
+The names are pretty self-explanatory. When ever a document is opened, changed or closed the client sends this information to the server.
+The [textDocument/didChange](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didChange) notification[^4] supports full and incremental synchronization.
+The server and client negotiate this during [initialization](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize).
 
 Incremental changes were more diffucult than expected.
 This is mainly because of the translation between different encodings.
@@ -156,7 +160,7 @@ Through these messages the language server has a "mirrored" version of the edito
 
 {{< notice example >}}
  Here is a example for a incremental **textDocument/didChange** notification.
- ```json
+```json
  {
 	"params": {
 		"contentChanges": [
@@ -196,8 +200,8 @@ Here is an **incomplete** list of Language Feature capabilities that made it int
 
 | capability                                                                                                                                         | effect                                                        | State of implementation |
 | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ----------------------- |
-| [Go to Declaration](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_declaration)          | Jumps to the declaration of a symbol                          | Not planned             |
-| [Go to Definition](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition)            | Jumps to the definition of a symbol                           | Not planned             |
+| [Go to Declaration](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_declaration)          | Jump to the declaration of a symbol                          | Not planned             |
+| [Go to Definition](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition)            | Jump to the definition of a symbol                           | Not planned             |
 | [Document Highlight](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentHighlight)   | Highlight  all references to a symbol                         | Planned                 |
 | [Document Link]()                                                                                                                                  | Handle Links in a Document                                    | Planned                 |
 | [Hover](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_hover)                            | Show Information about the hovered symbol                     | In progess              |
@@ -207,7 +211,7 @@ Here is an **incomplete** list of Language Feature capabilities that made it int
 | [Completion Proposals](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion)        | Give Completion Proposals to the user                         | In progress             |
 | [Publish Diagnostics](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_publishDiagnostics) | Send Information like Hints, Warnings or Errors to the editor | In progress             |
 | [Pull Diagnostics](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_pullDiagnostics)       | Request Information like Hints, Warningso Errors              | In progress             |
-| [Code Action](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_codeAction)                 | Suggest changes or fixes like refactoring                     | In progress             |
+| [Code Action](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_codeAction)                 | Suggest changes                                               | In progress             |
 | [Formatting](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_formatting)                  | Format the whole document                                     | Done                    |
 | [Range Formatting](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_rangeFormatting)       | Format the provided range in a document                       | Not Planned             |
 | [Rename](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_rangeFormatting)                 | Rename a symbol                                               | Planned                 |
@@ -217,8 +221,11 @@ Here is an **incomplete** list of Language Feature capabilities that made it int
 Let's talk about what I actually did.
 
 I choose to use [Rust](https://www.rust-lang.org/) for this project since its fancy in I like shiny things.
-Rust is the most admired programming language in the [Stack overflow developer survey 2024](https://survey.stackoverflow.co/2024/technology#2-programming-scripting-and-markup-languages), and I was curious why. After this project I can confirm that Rust is a very cool language, but the leading curve is quiet steep.
-Especially the error handling, increddibly smart compiler, functional approach and rich ecosystem enable a smooth developing experience. Besides a steep learning curve i also feel like its harder to get stuff done quickly, compared to python, due to the very strict compiler. But the resulting code is a lot more robust.
+Rust is the most admired programming language in the [Stack overflow developer survey 2024](https://survey.stackoverflow.co/2024/technology#2-programming-scripting-and-markup-languages),
+and I was curious why. After this project I can confirm that Rust is a very cool language, but the leading curve is quiet steep.
+Especially the error handling, increddibly smart compiler, functional approach and rich ecosystem enable a smooth developing experience.
+Besides a steep learning curve i also feel like its harder to get stuff done quickly, compared to python, due to the very strict compiler.
+But the resulting code is a lot more robust.
 
 
 Here is the module structure of my crate[^5]:
@@ -550,81 +557,79 @@ That is done recursivly.
 Here are a few examples of formatted queries.  
 If you want get a more detailed picture, check out the [formatting tests](https://github.com/IoannisNezis/Qlue-ls/blob/main/src/server/message_handler/formatting/tests.rs).
 
-- 
-    ```sparql
-    BASE <http://...>
-    PREFIX namespace1: <iri>
-    PREFIX namespace12: <iri>
-    SELECT ?s ?p (MAX (?o)  AS ?max_a )
-    FROM <...>
-    FROM <...>
-    WHERE {
+```sparql
+BASE <http://...>
+PREFIX namespace1: <iri>
+PREFIX namespace12: <iri>
+SELECT ?s ?p (MAX (?o)  AS ?max_a )
+FROM <...>
+FROM <...>
+WHERE {
+    {
+        ?s namespace1:p1 ?o ;
+          namespace12:p2 "dings" .
+        ?other <abc> 32 .
+        FILTER ((?other * 4) > 6 || ?o = "bar")
+    }
+    UNION {
         {
-            ?s namespace1:p1 ?o ;
-              namespace12:p2 "dings" .
-            ?other <abc> 32 .
-            FILTER ((?other * 4) > 6 || ?o = "bar")
-        }
-        UNION {
-            {
-                SELECT * WHERE {
-                    ?a ?b ?c .
-                    BIND (?c + 3 AS ?var)
-                }
-                GROUP BY ?a
-                HAVING ?b > 9
-                ORDER BY DESC(?a)
-                LIMIT 100
-                OFFSET 10
+            SELECT * WHERE {
+                ?a ?b ?c .
+                BIND (?c + 3 AS ?var)
             }
+            GROUP BY ?a
+            HAVING ?b > 9
+            ORDER BY DESC(?a)
+            LIMIT 100
+            OFFSET 10
         }
     }
-    ```
--
-    ```sparql
-    SELECT * WHERE {
-        wd:Q11571 p:P166 [ pq:P585 ?date ] .
-        wd:Q11572 p:P166 [
-            pq:P585 ?date ;
-            <...> ?other
-        ]
-        wd:Q11572 p:P166 []
-    }
-    ```
-- 
-    ```sparql
-    SELECT * WHERE {
-        ?a ?b ",,," .
-        FILTER (1 IN (1, 2, 3))
-    }
-    ```
--
-    ```sparql
-    SELECT * WHERE {
-        ?a <iri>/^a/(!<>?)+ | (<iri> | ^a | a) ?b .
-    }
-    ```
+}
+```
+
+```sparql
+SELECT * WHERE {
+    wd:Q11571 p:P166 [ pq:P585 ?date ] .
+    wd:Q11572 p:P166 [
+        pq:P585 ?date ;
+        <...> ?other
+    ]
+    wd:Q11572 p:P166 []
+}
+```
+
+```sparql
+SELECT * WHERE {
+    ?a ?b ",,," .
+    FILTER (1 IN (1, 2, 3))
+}
+```
+
+```sparql
+SELECT * WHERE {
+    ?a <iri>/^a/(!<>?)+ | (<iri> | ^a | a) ?b .
+}
+```
 
 I added some optional formatting, like aligning prefix declarations and predicates.
 Here is a example for a query with every non default option:
 
--
-    ```sparql
-    prefix n1:     <...>
-    prefix n12:    <...>
-    prefix n123:   <...>
-    prefix n1234:  <...>
-    prefix n12345: <...>
+```sparql
+prefix n1:     <...>
+prefix n12:    <...>
+prefix n123:   <...>
+prefix n1234:  <...>
+prefix n12345: <...>
 
-    select * 
-    where {
-      ?var n1:p "ding" ;
-           n12:p "foo" ;
-           n123:p "bar" ;
-           n1234:p "baz" ;
-           n12345:p "out of filler" ;
-    }
-    ```
+select * 
+where {
+  ?var n1:p "ding" ;
+       n12:p "foo" ;
+       n123:p "bar" ;
+       n1234:p "baz" ;
+       n12345:p "out of filler" ;
+}
+```
 
 Here is the full default format configuration:
 
