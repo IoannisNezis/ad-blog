@@ -23,7 +23,7 @@ And a life demo on [qlue-ls.com](https://qlue-ls.com/).
 # TL;DR
 
 I build a [sparql-language-server](https://github.com/IoannisNezis/Qlue-ls) from scratch in [Rust](https://www.rust-lang.org/), powered by [tree-sitter](https://tree-sitter.github.io/tree-sitter/).
-To showcase the Language server I build a [web editor](https://sparql.nezis.de/) using [Monaco](https://microsoft.github.io/monaco-editor/).
+To showcase the language server I build a [web editor](https://sparql.nezis.de/) using [Monaco](https://microsoft.github.io/monaco-editor/).
 To run the language server within the browser, I used [WebAssembly](https://webassembly.org/)
 
 # Content
@@ -65,11 +65,6 @@ To run the language server within the browser, I used [WebAssembly](https://weba
 
 # Motivation
 
-{{< notice todo >}}
- idea: editor keeps state of you document, language server the state of your code,
- lsp enables the exange between those two informations
-{{< /notice >}}
-
 The problem of providing language support to developers is very old.
 In the past domain-specific development environments where very common.
 
@@ -83,7 +78,7 @@ In the past domain-specific development environments where very common.
 | LaTeX     | TeXworks or Overleave   |
 
 These Programs contain source-code editors, but also provide a suit of integrated tool's that support the development process of their respective domains.
-That's why they are also referred to IDE's (**I**ntegrated **D**evelopment **E**nvironment).
+That's why they are also referred to as IDE's (**I**ntegrated **D**evelopment **E**nvironment).
 While these development environments still dominate, modern development environments seem to go a different direction.
 
 Some of the new kids on the block are: [neovim](https://neovim.io/), [vscode](https://code.visualstudio.com/) or [sublime text](https://www.sublimetext.com/).
@@ -92,35 +87,38 @@ They all are **general purpose** code editors that have a open-source plugin eco
 
 Long story short: Language support in these PDE's is not build in, but provided via an extension.
 This is made possible by a Protocol published by Microsoft in 2016: The **L**anguage **S**erver **P**rotocol (LSP).
-It enables the Editor (LSP-Client) and the Language support program (LSP-Server or Language Server) to be separated into to two independent components.
+It enables the Editor (LSP-Client) and the Language support program (LSP-Server or Language Server) to be separated into two independent components.
 
 ![](img/language-server-sequence.png)
 [^2]
 
-A key advantage of this architecture is that this features for language support has to be only written once, and not for every development tool over and over again.
+A key advantage of this architecture, is the reusablitity.  
+The language support has to be written only once, and not over and over again for every development tool.
 
 ![](img/lsp-languages-editors.png)[^8]
+
 # Goal
 
 My goal is to create a Language Server for [SPARQL](https://www.w3.org/TR/sparql11-query/#rQueryUnit).
 The language server should be able to **format** queries, give **diagnostic** reports and suggest **completions**.
-To work in the [Qlever-UI](https://qlever.cs.uni-freiburg.de/) the Language Server should be accessible from an editor that runs in the browser.
+To work in the [Qlever-UI](https://qlever.cs.uni-freiburg.de/) the Language Server should be accessible from an editor which runs in the browser.
+
 # The Language Server Protocol
 
 Let's talk briefly about the Protocol.
-It's build on top of [JSON-RPC](https://www.jsonrpc.org/specification), a [*JSON*](https://de.wikipedia.org/wiki/JSON) based protocol that enables, as the name suggests, inter-process communication.
-So the development tool (in our case the editor) and the language server run in two separate processes and communicate asynchronously via **JSON-RPC**.
+It's build on top of [JSON-RPC](https://www.jsonrpc.org/specification), a [*JSON*](https://de.wikipedia.org/wiki/JSON) based protocol that enables, as the name suggests, inter-process communication.  
+This means the development tool (in our case the editor) and the language server run in two separate processes and communicate asynchronously via **JSON-RPC**.
 
 ## JSON-RPC
 
-I will give you just a brief introduction, if you want to know more read the [specification](https://www.jsonrpc.org/specification#id1).
+I will give you just a brief introduction, if you want to know more you can read the [specification](https://www.jsonrpc.org/specification#id1).
 
-A normal JSON-RPC request has a `id`, `method` and `params` field.
-The `method` is the name of the invoked operation, and `params` field contains the optional parameters for this invoked operation.
+A normal JSON-RPC request has a `id`, `method` and `params` field.  
+The `method` is the name of the invoked operation, the `params` field contains the optional parameters for this invoked operation.
 
-A normal JSON-RPC response has a `id` and `result` field.
-The `id` has to be the same as the `id` of the corresponding request. This enables asynchronous communication.
-The `params` contain the result of the operation, if there is one.
+A normal JSON-RPC response has a `id` and `result` field.  
+The `id` has to be the same as the `id` of the corresponding request. This enables asynchronous communication.  
+The `params` contain the result of the operation, if present.
 
 {{< notice example >}}
  Request: `{"jsonrpc": "2.0", "method": "add", "params": [21, 21], "id": 1}`
@@ -131,16 +129,16 @@ There are also notifications[^4] and error responses, but we will omit them for 
 
 ## Document synchronization
 
-For the Language server to do anything, it needs to know what the user is doing.
+For the Language server to do anything, it's required to "see" the workspace.
 
-The LSP-Specification defines 3 [Document Synchronization](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_synchronization) methods for this purpose:
+The LSP-specification defines 3 [Document Synchronization](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_synchronization) methods for this purpose:
  - [`textDocument/didOpen`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didOpen)
  - [`textDocument/didChange`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didChange)
  - [`textDocument/didClose`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didClose)
 
-which are mandatory to implement (for clients).
+which are mandatory to implement (for clients).  
+Whenever a document is being opened, changed or closed the client is sending the information to the server, via these methods.
 
-The names are pretty self-explanatory. When ever a document is opened, changed or closed the client sends this information to the server.
 The [textDocument/didChange](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didChange) notification[^4] supports full and incremental synchronization.
 The server and client negotiate this during [initialization](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize).
 
@@ -153,8 +151,6 @@ Of course utf-8 is a variable length encoding, so different characters can have 
 ![](img/encodings.png)
 
 This was a bit confusing to get right.
-
-
 
 Through these messages the language server has a "mirrored" version of the editor state.
 
@@ -196,7 +192,7 @@ When initialization and synchronization work, the real fun begins.
 Now we can implement complex language features and provide actual smarts to the editor.
 As long as both the client and server support the capability.
 
-Here is an **incomplete** list of Language Feature capabilities that made it into the Specification
+Here is an **incomplete** list of Language Feature capabilities that made it into the specification
 
 | capability                                                                                                                                         | effect                                                        | State of implementation |
 | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ----------------------- |
@@ -220,13 +216,12 @@ Here is an **incomplete** list of Language Feature capabilities that made it int
 
 Let's talk about what I actually did.
 
-I choose to use [Rust](https://www.rust-lang.org/) for this project since its fancy in I like shiny things.
+I choose to use [Rust](https://www.rust-lang.org/) for this project since its fancy and I like shiny things.  
 Rust is the most admired programming language in the [Stack overflow developer survey 2024](https://survey.stackoverflow.co/2024/technology#2-programming-scripting-and-markup-languages),
-and I was curious why. After this project I can confirm that Rust is a very cool language, but the leading curve is quiet steep.
-Especially the error handling, incredibly smart compiler, functional approach and rich ecosystem enable a smooth developing experience.
-Besides a steep learning curve I also feel like its harder to get stuff done quickly, compared to python, due to the very strict compiler.
-But the resulting code is a lot more robust.
+and i was curious to find out why. After this project I can confirm that Rust is a brilliant language, but the leading curve is quiet steep.
 
+The error handling, increddibly smart compiler, functional approach and rich ecosystem enable a smooth developing expirience.
+That being said, the very strict compiler makes it hard to get stuff done quickly, however the resulting code is a lot more robust.
 
 Here is the module structure of my crate[^5]:
 
@@ -234,11 +229,11 @@ Here is the module structure of my crate[^5]:
 
 ## speaking JSON-RPC
 
-Okay first things first, we need to speak **JSON-RPC**.
-Then we need to implement some tool to analyze SPARQL queries.
+Okay first things first, we need to speak **JSON-RPC**.  
+After that we can implement some tool to analyze SPARQL queries.  
 When we got the analysis tool running we can use it to provide some language features.
 
-Assume we set up the Editor (client) to connect to our language server.
+Assume we set up the Editor (client) to connect to our language server.  
 It will send an utf-8 byte-stream. We need to interpret the bytes and respond.
 
 The first message will look something like this:
@@ -312,12 +307,12 @@ pub struct ClientInfo {
 }
 ```
 
-For **se**rializing and **de**serializing I used [serde](https://serde.rs/).
-Note that in Rust the notion of "Inheritance" does not exist. It uses "traits" to define shared behavior.
-That's no issue here, with `#[serde(flatten)]` we can inline the data from a struct into a parent struct and achieve a similar effect.
-Another issue was the naming convention.
-I JSON-RPC the fields are written in camelCase, but Rust uses snake_case.
-Serde also offers a solution for that: the `#[serde(rename_all = "camelCase")]` annotation, to convert this behind the scenes.
+For **se**rializing and **de**serializing I used [serde](https://serde.rs/).  
+Note that in Rust the notion of "Inheritance" does not exist. It uses "traits" to define shared behavior.  
+I solved this issue with `#[serde(flatten)]`, which inlines the data from a struct into a parent struct.  
+Another issue was the naming convention.  
+I JSON-RPC the fields are written in *camelCase*, but Rust uses *snake_case*.  
+Serde also offers a solution for that: the `#[serde(rename_all = "camelCase")]` annotation.
 
 This is basically how I read and write messages.
 I defined structs for the basic [lifecycle massages](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize):
@@ -325,21 +320,21 @@ I defined structs for the basic [lifecycle massages](https://microsoft.github.io
 | message                                                                                                               | sender | type         | effect                                         |
 | --------------------------------------------------------------------------------------------------------------------- | ------ | ------------ | ---------------------------------------------- |
 | [initialize](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize)  | client | request      | initialize connection, comunicate capabilities |
-| [initalized](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialized) | client | notification | signal reception of initialize response        |
+| [initalized](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialized) | client | notification | signals reception of initialize response        |
 | [shutdown](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#shutdown)      | client | request      | shutdown server, dont exit                     |
 | [exit](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#exit)              | client | notification | exit the server process                        |
 
-Then I defined the basic structs for  [document sznchronization](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_synchronization)
+Then I defined the basic structs for  [document synchronization](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_synchronization)
 
 | message                                                                                                                                      | sender | type         | effect                              |
 | -------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------ | ----------------------------------- |
-| [textDocument/didOpen](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didOpen)     | client | notification | signal newly opened text document   |
-| [textDocument/didChange](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didChange) | client | notification | signal changes to a text document   |
-| [textDocument/didClose](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didClose)   | client | notification | signal that text document is closed |
+| [textDocument/didOpen](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didOpen)     | client | notification | signals newly opened text document   |
+| [textDocument/didChange](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didChange) | client | notification | signals changes to a text document   |
+| [textDocument/didClose](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didClose)   | client | notification | signals closed text document |
 
 With these messages defined, we can open and close a connection to a client and keep a synchronized state of the clients documents.
 
-To run this native i also needed to listen to stdin and parse the [Header](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#headerPart) from raw bytes but i spare you that experience.
+To run this native i also needed to listen to stdin and parse the [Header](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#headerPart) from raw bytes, but i spare you that experience.
 
 ## Parser: the Engine under the hood
 
