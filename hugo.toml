@@ -30,14 +30,15 @@ showSupport = false
 
 pageNotFoundTitle = "404 - Page not found"
 
+[params.search]
+enable = true
+include_list_pages = false
+
 [services]
 [services.disqus]
 shortname = ""
 [services.googleAnalytics]
 id = ''
-
-[permalinks]
-post = "/post/:slug/"
 
 [[menu.main]]
 name = "Home"
@@ -61,3 +62,22 @@ weight = 98
 
 [markup.goldmark.renderer]
 unsafe = true
+
+[module]
+[[module.imports]]
+path = "github.com/gethugothemes/hugo-modules/search"
+
+[[params.plugins.js]]
+link = "js/search.js"
+
+############################# Outputs ##############################
+[outputs]
+home = ["HTML", "SearchIndex"]
+
+############################ Output Format ###########################
+[outputFormats]
+[outputFormats.SearchIndex]
+mediaType = "application/json"
+baseName = "searchindex"
+isPlainText = true
+notAlternative = true
